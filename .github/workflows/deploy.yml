@@ -1,10 +1,9 @@
-
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [ main ]
-    
+
 permissions:
   contents: write
   pages: write
@@ -20,11 +19,11 @@ jobs:
         uses: actions/configure-pages@v3
         
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: '/'
+          path: './'
           
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
