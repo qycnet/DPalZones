@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPalZones 地图</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/annotorious-openseadragon@2.7.17/dist/annotorious.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        #openseadragon {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #cursorViewportPosition,
+        .input-overlay,
+        .textHelper,
+        .button-overlay {
+            position: fixed;
+            color: white;
+            font-size: 15px;
+            z-index: 9999;
+        }
+
+        #cursorViewportPosition {
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid black;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            right: 1vw;
+            bottom: 1vh;
+        }
+
+        .textHelper {
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid black;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            top: 1vh;
+            left: 1vw;
+        }
+
+        .input-overlay {
+            top: 1vh;
+            right: 2vw;
+            min-width: 10vw;
+            max-width: 30vw;
+        }
+
+        .input-row {
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid black;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .button-overlay {
+            bottom: 1vh;
+            left: 1vw;
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid black;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Centering modal in the middle */
+        .modal-dialog-centered {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .modal-content {
+            background-color: rgba(34, 34, 34, 0.95);
+            color: white;
+            border: 1px solid #444;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            width: 40%; /* Adjust this to control the size */
+            min-width: 400px;
+        }
+
+        .modal-header {
+            background-color: #333;
+            border-bottom: 1px solid #444;
+        }
+
+        .modal-footer {
+            background-color: #333;
+            border-top: 1px solid #444;
+        }
+
+        .form-check-label,
+        .form-check-input {
+            color: white;
+        }
+
+        /* Tabs style to match the design */
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .nav-tabs .nav-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .nav-tabs .nav-item button {
+            background-color: transparent;
+            border: none;
+            font-size: 16px;
+            color: white;
+        }
+
+        .nav-tabs .nav-item button:hover {
+            color: #1eff00; /* Changed hover color */
+        }
+
+        .nav-tabs .nav-item button.active {
+            color: #1eff00; /* Changed active color */
+            border-bottom: 2px solid #1eff00; /* Changed active border color */
+        }
+
+        .form-check-input {
+            margin-right: 10px;
+        }
+
+        /* Flexbox for centering */
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .form-check {
+            margin-bottom: 0.75rem;
+        }
+
+        .toggle-section {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        /* Tabs content */
+        .tab-content {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+.custom-button {
+    background-color: rgba(0, 0, 0, 0.4) !important; /* Slightly more solid black */
+    color: #1eff00 !important; /* Neon green text */
+    border: none !important; /* No border */
+    padding: 10px 20px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+    transition: background-color 0.3s ease, transform 0.3s ease; /* Smooth transition */
+}
+
+.custom-button:hover {
+    background-color: rgba(0, 0, 0, 0.9) !important; /* Slightly darker on hover */
+    color: #1eff00 !important; /* Keep neon green text */
+    transform: translateY(-2px); /* Lift effect on hover */
+    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.3); /* Enhance shadow on hover */
+}
+
+/* Custom toggle ON state */
+.form-check-input:checked {
+    background-color: #1eff00 !important; /* Neon green background when turned on */
+    border-color: #1eff00 !important; /* Neon green border */
+}
+
+.form-check-input:checked::before {
+    background-color: black !important; /* Black circle when turned on */
+    border-color: black !important; /* Black border for the circle */
+}
+
+/* Custom toggle OFF state */
+.form-check-input {
+    background-color: #333 !important; /* Darker gray background for off state */
+    border-color: #333 !important; /* Matching darker gray border */
+}
+
+.form-check-input::before {
+    background-color: #222 !important; /* Even darker gray circle when turned off */
+    border-color: #222 !important; /* Darker gray border for the circle */
+}
+
+    </style>
+</head>
+
+<body>
+    <div id="openseadragon"></div>
+    <div class="input-overlay">
+        <div id="global"></div>
+        <div id="zones"></div>
+    </div>
+    <span id="cursorViewportPosition"></span>
+<div class="textHelper">    
+    <span style="color: white;">
+        按 Shift+LeftClick 创建区域。<br>
+        双击 LeftClick 结束区域创建。<br>
+        不要重叠区域。<br>
+    </span>
+    <hr>
+    <span style="color: white;">
+        由 
+    </span>
+    <a href="https://pal2-conf.apiqy.cn/" style="color: #1eff00;">#qycnet</a><br>
+    <span style="color: white;">
+        制作 由 
+    </span>
+    <a href="https://pal2-conf.apiqy.cn/" target="_blank" style="color: #1eff00;">#qycnet</a> 维护 （DPalZones）<br>
+</div>
+    <div class="button-overlay d-flex flex-column">
+        <button id="globalButton" class="btn custom-button btn-sm">全局权限</button>
+	<button id="exportButton" class="btn custom-button btn-sm mt-1">出口</button>
+	<button id="importButton" class="btn custom-button btn-sm mt-1">进口</button>
+
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/openseadragon"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@recogito/annotorious-openseadragon@2.7.17/dist/openseadragon-annotorious.min.js"></script>
+    <script>
+        var viewer = OpenSeadragon({
+            showNavigationControl: false,
+            showZoomControl: false,
+            id: "openseadragon",
+            tileSources: [{
+                type: 'image',
+                url: 'Map.jpg'
+            }],
+            minZoomLevel: 1,
+            maxZoomLevel: 10,
+            visibilityRatio: 1.0,
+            defaultZoomLevel: 1,
+            constrainDuringPan: true,
+            zoomPerClick: 1
+        });
+
+        var config = {
+            disableEditor: true,
+            allowEmpty: true
+        };
+
+        function onMouseTrackerMove(event) {
+            var viewerX = event.position.x;
+            var viewerY = event.position.y;
+            var windowPoint = new OpenSeadragon.Point(viewerX, viewerY);
+            var viewportPoint = viewer.viewport.windowToImageCoordinates(windowPoint);
+            var imageSize = viewer.source.dimensions;
+            var mappedX = (viewportPoint.x / imageSize.x) * 2000 - 1000;
+            var mappedY = ((imageSize.y - viewportPoint.y) / imageSize.y) * 2000 - 1000;
+            $("#cursorViewportPosition").text(Math.round(mappedX) + "," + Math.round(mappedY));
+        }
+
+        new OpenSeadragon.MouseTracker({
+            element: document,
+            moveHandler: onMouseTrackerMove
+        }).setTracking(true);
+
+        var anno = OpenSeadragon.Annotorious(viewer, config);
+        anno.setDrawingTool("polygon");
+
+        let DefaultPermissions = {
+            "Player": {
+                "world": [
+                    "Build",
+                    "Dismantle",
+                    "Ride",
+                    "Fly",
+                    "OpenTreasure",
+                    "Theplayerenters"
+                ],
+                "damage": [
+                    "Player",
+                    "Companion",
+                    "BaseCampPal",
+                    "WildPal",
+                    "NPC",
+                    "Structure"
+                ],
+                "ProtectLevel": [1]
+            },
+            "playersPal": {
+                "damage": [
+                    "Player",
+                    "Companion",
+                    "BaseCampPal",
+                    "WildPal",
+                    "NPC",
+                    "Structure"
+                ]
+            },
+            "Companion": {
+                "damage": [
+                    "Player",
+                    "Companion",
+                    "BaseCampPal",
+                    "WildPal",
+                    "NPC",
+                    "Structure"
+                ]
+            },
+            "BaseCampPal": {
+                "damage": [
+                    "Player",
+                    "Companion",
+                    "BaseCampPal",
+                    "WildPal",
+                    "NPC",
+                    "Structure"
+                ]
+            },
+            "WildPal": {
+                "damage": [
+                    "Player",
+                    "Companion",
+                    "BaseCampPal",
+                    "WildPal",
+                    "NPC",
+                    "Structure"
+                ]
+            },
+            "NPC": {
+                "damage": [
+                    "Player",
+                    "Companion",
+                    "BaseCampPal",
+                    "WildPal",
+                    "NPC",
+                    "Structure"
+                ]
+            }
+        }
+    </script>
+    <script src="annotationsEvents.js"></script>
+    <script>
+        $('#global').append(CreateInput(DefaultPermissions, "", true));
+        let globalPermissionsState = DefaultPermissions;  // Initialize with default permissions
+
+        $('#globalButton').click(function () {
+            // Hide the current inputs
+            $('.input-overlay').children().children().hide();
+            $('#global').children().show();  // Show the global section
+            // Save the current state of toggles before clearing
+            $('#global').find('.form-check-input').each(function () {
+                let instanceTypeKey = $(this).closest('.instanceType').attr('key');
+                let categoryKey = $(this).closest('.category').attr('key');
+                let value = $(this).attr('val');
+                let checked = $(this).is(':checked');
+
+                // If not already defined, initialize object structure
+                if (!globalPermissionsState[instanceTypeKey]) {
+                    globalPermissionsState[instanceTypeKey] = {};
+                }
+                if (!globalPermissionsState[instanceTypeKey][categoryKey]) {
+                    globalPermissionsState[instanceTypeKey][categoryKey] = [];
+                }
+
+                // Update permissions state based on checked status
+                if (checked && !globalPermissionsState[instanceTypeKey][categoryKey].includes(value)) {
+                    globalPermissionsState[instanceTypeKey][categoryKey].push(value);
+                } else if (!checked && globalPermissionsState[instanceTypeKey][categoryKey].includes(value)) {
+                    const index = globalPermissionsState[instanceTypeKey][categoryKey].indexOf(value);
+                    if (index > -1) {
+                        globalPermissionsState[instanceTypeKey][categoryKey].splice(index, 1);
+                    }
+                }
+            });
+
+            // Clear the global section before re-adding inputs
+            $('#global').empty();
+            $('#global').append(CreateInput(globalPermissionsState, "", true));  // Add global permissions input with saved state
+            // Ensure the input-row is visible
+            $('#global').find('.input-row').css('display', 'block');
+            // Make the overlay visible again
+            $('.input-overlay').show();
+        });
+
+        // Show modal for creating zones
+        function showZoneOptionsModal() {
+            $('#zoneModal').modal('show');
+        }
+
+        // Save zone settings
+        $('#saveZoneSettings').click(function () {
+            var zoneName = $('#zoneName').val();
+            var permissions = {
+                "buildStructures": $('#buildStructures').is(':checked'),
+                "dismantleStructures": $('#dismantleStructures').is(':checked'),
+                "damagePlayers": $('#damagePlayers').is(':checked'),
+                "damagePlayerHeldPals": $('#damagePlayerHeldPals').is(':checked'),
+                "damageWildPals": $('#damageWildPals').is(':checked'),
+                "damageBasePals": $('#damageBasePals').is(':checked'),
+                "damageNpcs": $('#damageNpcs').is(':checked')
+            };
+            console.log("Zone Name: ", zoneName);
+            console.log("Permissions: ", permissions);
+            $('#zoneModal').modal('hide');
+        });
+    </script>
+</body>
+</html>
