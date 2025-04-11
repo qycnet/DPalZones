@@ -1,5 +1,5 @@
 
-# DPalZones  地图权限管理系统
+# DPalZones 地图权限管理系统
 
 ![项目截图](Map.jpg)
 
