@@ -44,60 +44,57 @@ async function updateAnnotations() {
 
 
 $('#exportButton').click(function () {
-
     updateAnnotations().then(() => {
-
         setTimeout(() => {
-
             const data = {};
-
-            data["global"] = {}
-            data["global"]["permissions"] = {}
+            data["global"] = { permissions: {} };
 
             // Export global permissions
-            document.querySelector('#global').querySelector('.input-row').querySelectorAll('.tab-pane').forEach(tabs => {
-                tabs.querySelectorAll('.instanceType').forEach(instanceType => {
-                    const instanceTypeKey = instanceType.getAttribute('key');
-
-                    if (!data["global"]["permissions"][instanceTypeKey]) {
+            const globalInputRow = document.querySelector('#global .input-row');
+            if (globalInputRow) {
+                globalInputRow.querySelectorAll('.tab-pane').forEach(tabPane => {
+                    tabPane.querySelectorAll('.instanceType').forEach(instanceType => {
+                        const instanceTypeKey = instanceType.getAttribute('key');
                         data["global"]["permissions"][instanceTypeKey] = {};
-                    }
 
-                    instanceType.querySelectorAll('.category').forEach(category => {
-                        const categoryKey = category.getAttribute('key');
-
-                        if (!data["global"]["permissions"][instanceTypeKey][categoryKey]) {
+                        instanceType.querySelectorAll('.category').forEach(category => {
+                            const categoryKey = category.getAttribute('key');
                             data["global"]["permissions"][instanceTypeKey][categoryKey] = [];
-                        }
+                            if (categoryKey === 'world' && instanceTypeKey === 'Player') {
+                                // 处理保护等级
+                                const protectLevelInput = category.querySelector('.protect-level-input');
+                                if (protectLevelInput) {
+                                    const level = parseInt(protectLevelInput.value) || 1;
+                                    data["global"]["permissions"][instanceTypeKey]["ProtectLevel"] = level;
+                                    console.log("导出全局保护等级:", level);
+                                } else {
+                                    console.warn("全局保护等级输入框未找到");
+                                }
+                            }
 
-                        if (categoryKey === 'world') {
-                    // 处理保护等级
-                    const protectLevelInput = category.querySelector('.protect-level-input');
-                    if (protectLevelInput) {
-                        data["global"]["permissions"][instanceTypeKey]["ProtectLevel"] = [parseInt(protectLevelInput.value) || 0];
-                    }
-                }
-                
-                category.querySelectorAll('.form-check-input').forEach(formCheckInput => {
-                    if (formCheckInput.checked) {
-                        data["global"]["permissions"][instanceTypeKey][categoryKey].push(formCheckInput.getAttribute('val'));
-                    }
-                });
+                            category.querySelectorAll('.form-check-input').forEach(formCheckInput => {
+                                if (formCheckInput.checked) {
+                                    data["global"]["permissions"][instanceTypeKey][categoryKey].push(formCheckInput.getAttribute('val'));
+                                }
+                            });
+                        });
                     });
-
                 });
-            });
+            } else {
+                console.error("全局权限输入行未找到");
+            }
+
+            console.log("导出的全局权限数据:", JSON.stringify(data["global"], null, 2));
 
             const zones = [];
 
-// Export zone data
-document.querySelector('#zones').querySelectorAll('.input-row').forEach(row => {
+            // Export zone data
+            document.querySelector('#zones').querySelectorAll('.input-row').forEach(row => {
+                const input = {};
 
-    const input = {}
-
-    // Capture the zone name from the input field, or default to 'PalZones' if empty
+                // Capture the zone name from the input field, or default to 'PalZones' if empty
     let zoneNameInput = row.querySelector('.zone-name-input').value;
-    input["name"] = zoneNameInput.trim() === "" ? "PalZones" : zoneNameInput;
+    input["name"] = zoneNameInput.trim() === "" ? "DPalZones" : zoneNameInput;
 
     input["points"] = [];
     var annotation = anno.getAnnotationById(row.getAttribute('zone-id'));
@@ -131,11 +128,21 @@ document.querySelector('#zones').querySelectorAll('.input-row').forEach(row => {
                     input["permissions"][instanceTypeKey][categoryKey] = [];
                 }
 
-                if (categoryKey === 'world') {
+                if (categoryKey === 'world' && instanceTypeKey === 'Player') {
                     // 处理保护等级
                     const protectLevelInput = category.querySelector('.protect-level-input');
                     if (protectLevelInput) {
-                        input["permissions"][instanceTypeKey]["ProtectLevel"] = [parseInt(protectLevelInput.value) || 0];
+                        const level = parseInt(protectLevelInput.value);
+                        if (!isNaN(level) && level > 0) {
+                            input["permissions"][instanceTypeKey]["ProtectLevel"] = level;
+                            console.log("导出区域保护等级:", level, "区域名称:", input["name"]);
+                        } else {
+                            console.warn("无效的保护等级值:", protectLevelInput.value);
+                            input["permissions"][instanceTypeKey]["ProtectLevel"] = 1;
+                        }
+                    } else {
+                        console.warn("区域保护等级输入框未找到");
+                        input["permissions"][instanceTypeKey]["ProtectLevel"] = 1;
                     }
                 }
 
@@ -175,7 +182,6 @@ document.querySelector('#zones').querySelectorAll('.input-row').forEach(row => {
 
 
 $('#importButton').click(function () {
-
     var input = $('<input type="file">');
     input.on('change', function (e) {
         var file = e.target.files[0];
@@ -186,44 +192,83 @@ $('#importButton').click(function () {
                 var importedData = JSON.parse(e.target.result);
                 var annotationData = []
 
+                console.log("Imported data:", JSON.stringify(importedData, null, 2));
 
                 $('.input-overlay').children().empty();
 
-                $('#global').append(CreateInput(importedData.global.permissions, "", true));
+                // 处理全局权限
+                if (importedData.global && importedData.global.permissions) {
+                    let globalPerms = importedData.global.permissions;
+                    if (globalPerms.Player) {
+                        // 确保 ProtectLevel 存在且为数字
+                        if (globalPerms.Player.ProtectLevel !== undefined) {
+                            let protectLevel = parseInt(globalPerms.Player.ProtectLevel);
+                            if (!isNaN(protectLevel)) {
+                                globalPerms.Player.ProtectLevel = protectLevel;
+                                console.log("导入全局保护等级:", protectLevel);
+                            } else {
+                                console.warn("无效的全局保护等级，使用默认值 1");
+                                globalPerms.Player.ProtectLevel = 1;
+                            }
+                        } else {
+                            console.log("全局保护等级未定义，设置默认值 1");
+                            globalPerms.Player.ProtectLevel = 1;
+                        }
+                    } else {
+                        console.warn("全局权限中未找到 Player 类型，创建默认配置");
+                        globalPerms.Player = { ProtectLevel: 1 };
+                    }
+                    
+                    // 在创建输入框之前打印全局权限数据
+                    console.log("全局权限数据:", JSON.stringify(globalPerms, null, 2));
+                } else {
+                    console.warn("未找到全局权限数据，创建默认配置");
+                    importedData.global = { permissions: { Player: { ProtectLevel: 1 } } };
+                }
 
-                importedData.zones.forEach(zones => {
+                $('#global').empty().append(CreateInput(importedData.global.permissions, "", true));
 
+                importedData.zones.forEach(zone => {
                     let points = []
 
-                    zones.points.forEach(data => {
+                    zone.points.forEach(data => {
                         let originalX = ((data.x - -18100) / 741 + 1000) * (8192 / 2000);
                         let originalY = -((data.y + 277000) / 741 - 1000) * (8192 / 2000);
                         points.push(`${originalX},${originalY}`);
                     })
 
-                    annotationData.push(
-                        {
-                            "@context": "http://www.w3.org/ns/anno.jsonld",
-                            "body": [],
-                            "id": String(globaIDIndex),
-                            "type": "Annotation",
-                            "target": {
-                                "selector": {
-                                    "type": "SvgSelector",
-                                    "value": `<svg><polygon points="${points.join(' ')}"></polygon></svg>`
-                                }
+                    annotationData.push({
+                        "@context": "http://www.w3.org/ns/anno.jsonld",
+                        "body": [],
+                        "id": String(globaIDIndex),
+                        "type": "Annotation",
+                        "target": {
+                            "selector": {
+                                "type": "SvgSelector",
+                                "value": `<svg><polygon points="${points.join(' ')}"></polygon></svg>`
                             }
                         }
-                    )
+                    })
 
-                    // Append the zone name while importing
-                    $('#zones').append(CreateInput(zones.permissions, zones.name))
+                    // 处理区域权限
+                    if (zone.permissions && zone.permissions.Player) {
+                        let playerPerms = zone.permissions.Player;
+                        if (playerPerms.ProtectLevel) {
+                            // 确保 ProtectLevel 是数字
+                            playerPerms.ProtectLevel = Array.isArray(playerPerms.ProtectLevel) 
+                                ? playerPerms.ProtectLevel[0] 
+                                : parseInt(playerPerms.ProtectLevel);
+                            console.log("Zone ProtectLevel - Name:", zone.name, "Level:", playerPerms.ProtectLevel);
+                        }
+                    }
+
+                    // 添加区域
+                    $('#zones').append(CreateInput(zone.permissions, zone.name))
                 })
-
 
                 anno.setAnnotations(annotationData);
             } catch (error) {
-                console.error(error);
+                console.error("Import error:", error);
             }
         };
         reader.readAsText(file);
@@ -234,6 +279,7 @@ $('#importButton').click(function () {
 
 
 function CreateInput(permissions, zoneName = "", isGlobal = false) {
+    console.log("CreateInput called with:", JSON.stringify({ permissions, zoneName, isGlobal }, null, 2));
     console.log("Creating input, isGlobal:", isGlobal);  // Debug log to check flag
     
 	var deleteButtonHTML=`
@@ -300,7 +346,7 @@ function CreateInput(permissions, zoneName = "", isGlobal = false) {
                             <input class="form-check-input" val="Fly" type="checkbox" role="switch">
                             <label class="form-check-label"> 骑乘飞行坐骑</label>
                         </div>
-                        <div class="form-check form-switch">
+						<div class="form-check form-switch">
                             <input class="form-check-input" val="OpenTreasure" type="checkbox" role="switch">
                             <label class="form-check-label"> 打开宝箱</label>
                         </div>
@@ -310,7 +356,7 @@ function CreateInput(permissions, zoneName = "", isGlobal = false) {
                         </div>
                         <div class="form-group">
                             <label for="protectLevel">进入限制等级：</label>
-                            <input type="number" class="form-control protect-level-input" min="1" value="1" style="width: 100px;">
+                            <input type="number" class="form-control protect-level-input ${isGlobal ? 'global-protect-level' : 'zone-protect-level'}" min="1" value="1" style="width: 100px;">
                         </div>
                     </div>
                     <div class="category" key="damage">
@@ -478,16 +524,62 @@ function CreateInput(permissions, zoneName = "", isGlobal = false) {
 
     // Code to handle checkbox states and populate tabs with permissions
     $.each(permissions, function (category, actions) {
-        var categoryDiv = inputRow.find('.instanceType[key="' + category + '"]');
+        var categoryDiv = inputRow.find('.instanceType[key=\"' + category + '\"]');
         $.each(actions, function (action, values) {
-            var actionDiv = categoryDiv.find('.category[key="' + action + '"]');
             if (action === 'ProtectLevel' && category === 'Player') {
-                // 设置保护等级
-                actionDiv.parent().find('.protect-level-input').val(values[0] || 0);
+                // 设置保护等级 - 处理数组或数字格式
+                var protectLevelValue;
+                if (Array.isArray(values)) {
+                    protectLevelValue = values[0];
+                } else if (typeof values === 'number') {
+                    protectLevelValue = values;
+                } else {
+                    protectLevelValue = parseInt(values) || 1;
+                }
+                
+                // 根据是否为全局选择不同的保护等级输入框
+                var protectInput;
+                if (isGlobal) {
+                    protectInput = inputRow.find('.global-protect-level');
+                    console.log("查找全局保护等级输入框:", protectInput.length);
+                } else {
+                    protectInput = inputRow.find('.zone-protect-level');
+                    console.log("查找区域保护等级输入框:", protectInput.length);
+                }
+                
+                if (protectInput.length > 0) {
+                    protectInput.val(protectLevelValue);
+                    console.log("设置保护等级 - " + (isGlobal ? "Global" : "Zone: " + zoneName) + ", Level:", protectLevelValue);
+                    
+                    // 添加事件监听器，在值变化时更新permissions对象
+                    protectInput.off('change').on('change', function() {
+                        var newValue = parseInt($(this).val()) || 1;
+                        permissions[category].ProtectLevel = newValue;
+                        console.log("更新保护等级 - " + (isGlobal ? "Global" : "Zone: " + zoneName) + ", New Level:", newValue);
+                    });
+                } else {
+                    console.error("找不到保护等级输入框 - " + (isGlobal ? "Global" : "Zone: " + zoneName));
+                    console.log("Input row HTML:", inputRow.html());
+                }
             } else {
-                Object.keys(values).forEach(function (array) {
-                    actionDiv.find('input[val="' + values[array] + '"]').prop('checked', true);
-                });
+                var actionDiv = categoryDiv.find('.category[key=\"' + action + '\"]');
+                if (Array.isArray(values)) {
+                    // 处理数组格式的权限
+                    values.forEach(function (value) {
+                        var checkbox = actionDiv.find('input[val=\"' + value + '\"]');
+                        if (checkbox.length > 0) {
+                            checkbox.prop('checked', true);
+                        }
+                    });
+                } else if (typeof values === 'object') {
+                    // 处理对象格式的权限（兼容旧格式）
+                    Object.values(values).forEach(function (value) {
+                        var checkbox = actionDiv.find('input[val=\"' + value + '\"]');
+                        if (checkbox.length > 0) {
+                            checkbox.prop('checked', true);
+                        }
+                    });
+                }
             }
         });
     });
